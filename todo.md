@@ -17,6 +17,7 @@ mkdir -p storage/{logs,uploads,cache}
 mkdir -p tests/{integration,unit}
 ```
 
+
 ### Create Essential Files: Add an empty main.go file as the entry point and a go.mod file to handle dependencies:
 
 ```bash

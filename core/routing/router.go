@@ -18,9 +18,45 @@ func NewRouter() *Router {
 	}
 }
 
+// Group creates a new route group with a common prefix and middleware.
+func (r *Router) Group(prefix string, middleware ...func(http.Handler) http.Handler) *Router {
+	groupRouter := &Router{
+		routes:        []*Route{},
+		errorHandlers: r.errorHandlers,
+	}
+
+	// Update the group router to use the same route slice
+	r.routes = append(r.routes, groupRouter.routes...)
+
+	return &Router{
+		routes:        groupRouter.routes,
+		errorHandlers: groupRouter.errorHandlers,
+	}
+}
+
 // Get registers a GET route with optional middleware.
 func (r *Router) Get(path string, handler http.HandlerFunc, middleware ...func(http.Handler) http.Handler) {
 	r.AddRoute(NewRoute("GET", path, handler, middleware...))
+}
+
+// Post registers a POST route with optional middleware.
+func (r *Router) Post(path string, handler http.HandlerFunc, middleware ...func(http.Handler) http.Handler) {
+	r.AddRoute(NewRoute("POST", path, handler, middleware...))
+}
+
+// Put registers a PUT route with optional middleware.
+func (r *Router) Put(path string, handler http.HandlerFunc, middleware ...func(http.Handler) http.Handler) {
+	r.AddRoute(NewRoute("PUT", path, handler, middleware...))
+}
+
+// Patch registers a PATCH route with optional middleware.
+func (r *Router) Patch(path string, handler http.HandlerFunc, middleware ...func(http.Handler) http.Handler) {
+	r.AddRoute(NewRoute("PATCH", path, handler, middleware...))
+}
+
+// Delete registers a DELETE route with optional middleware.
+func (r *Router) Delete(path string, handler http.HandlerFunc, middleware ...func(http.Handler) http.Handler) {
+	r.AddRoute(NewRoute("DELETE", path, handler, middleware...))
 }
 
 // AddRoute registers a new route to the router.

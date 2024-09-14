@@ -91,9 +91,26 @@ func (k *Kernel) HandleRequest(w http.ResponseWriter, req *http.Request) {
 
 // StartServer starts the HTTP server
 func (k *Kernel) StartServer(address string) {
-	fmt.Printf("Server running at %s\n", address)
-	err := http.ListenAndServe(address, http.HandlerFunc(k.HandleRequest))
+	// Resolve the logger service
+	logger, err := k.Services.Resolve("logger")
 	if err != nil {
-		fmt.Printf("Error starting server: %v\n", err)
+		fmt.Printf("Error resolving logger service: %v\n", err)
+		return
+	}
+
+	// Cast the resolved service to *DefaultLogger
+	defaultLogger, ok := logger.(*DefaultLogger)
+	if !ok {
+		fmt.Printf("Error casting logger service to *DefaultLogger\n")
+		return
+	}
+
+	// Log server start
+	defaultLogger.Info(fmt.Sprintf("Server running at %s", address))
+
+	// Start the HTTP server
+	err = http.ListenAndServe(address, http.HandlerFunc(k.HandleRequest))
+	if err != nil {
+		defaultLogger.Error(fmt.Sprintf("Error starting server: %v", err))
 	}
 }

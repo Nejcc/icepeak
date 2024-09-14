@@ -3,14 +3,17 @@ package core
 import (
 	"fmt"
 	"net/http"
+	"runtime"
 	"strings"
+	"time"
 )
 
 // CORSOptions defines the configuration for CORS handling.
 type CORSOptions struct {
-	AllowedOrigins []string
-	AllowedMethods []string
-	AllowedHeaders []string
+	AllowedOrigins   []string
+	AllowedMethods   []string
+	AllowedHeaders   []string
+	AllowCredentials bool
 }
 
 // CORSMiddleware handles Cross-Origin Resource Sharing.
@@ -22,6 +25,10 @@ func CORSMiddleware(options CORSOptions) func(http.Handler) http.Handler {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Methods", strings.Join(options.AllowedMethods, ", "))
 				w.Header().Set("Access-Control-Allow-Headers", strings.Join(options.AllowedHeaders, ", "))
+
+				if options.AllowCredentials {
+					w.Header().Set("Access-Control-Allow-Credentials", "true")
+				}
 
 				// Handle preflight OPTIONS request
 				if r.Method == "OPTIONS" {
@@ -71,7 +78,9 @@ func InputValidationMiddleware(requiredFields []string) func(http.Handler) http.
 // RequestLoggingMiddleware logs details about the incoming request.
 func RequestLoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Corrected method call to Resolve the logger service
+		start := time.Now()
+
+		// Resolve the logger service
 		logger, err := GetKernel().Services.Resolve("logger")
 		if err != nil {
 			fmt.Printf("Error resolving logger service: %v\n", err)
@@ -87,7 +96,24 @@ func RequestLoggingMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		defaultLogger.Info(fmt.Sprintf("[REQUEST] %s %s", r.Method, r.URL.Path))
+		// Proceed with the next handler
 		next.ServeHTTP(w, r)
+
+		// Log the request details after handling the request
+		clientIP := r.RemoteAddr
+		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+			clientIP = forwarded
+		}
+
+		requestSize := r.ContentLength
+		duration := time.Since(start)
+		var memStats runtime.MemStats
+		runtime.ReadMemStats(&memStats)
+
+		logMessage := fmt.Sprintf(
+			"Client IP: %s | Method: %s | Path: %s | Request Size: %d bytes | Duration: %v | Memory Usage: %d KB",
+			clientIP, r.Method, r.URL.Path, requestSize, duration, memStats.Alloc/1024,
+		)
+		defaultLogger.Info(logMessage)
 	})
 }

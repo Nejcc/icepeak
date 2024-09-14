@@ -27,7 +27,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	for _, route := range r.routes {
 		if route.Method == req.Method && matchPath(route.Path, req.URL.Path) {
 			// Apply middleware
-			handler := route.HandlerFunc
+			var handler http.Handler = http.HandlerFunc(route.HandlerFunc) // Explicitly convert to http.HandlerFunc
 			for _, mw := range route.Middleware {
 				handler = mw(handler)
 			}

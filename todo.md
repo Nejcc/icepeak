@@ -38,3 +38,13 @@ touch core/routing/router.go
 touch core/routing/route.go
 touch core/routing/middleware.go
 ```
+
+
+go get github.com/joho/godotenv
+
+
+
+>>> ENVIRONMENT=development
+
+go get gopkg.in/yaml.v2
+

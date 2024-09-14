@@ -2,65 +2,110 @@ package main
 
 import (
 	"fmt"
+	"html/template"
+	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
+	"runtime"
+
+	"gopkg.in/yaml.v2"
 
 	"icepeak/core/routing"
+
+	"github.com/joho/godotenv"
 )
 
+// Config struct to hold the configuration values
+type Config struct {
+	ViewRoot string `yaml:"VIEW_ROOT"`
+}
+
+var config Config
+
 func main() {
+	// Load the .env file
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Println("Error loading .env file")
+	}
+
+	// Load the view configuration
+	err = loadConfig()
+	if err != nil {
+		fmt.Printf("Error loading configuration: %v\n", err)
+		return
+	}
+
 	// Initialize the router
 	router := routing.NewRouter()
 
-	// Define routes using helper functions for different HTTP methods
-
-	// GET route
-	helloRoute := routing.Get("/hello", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello, Icepeak!")
-	})
-
-	// POST route
-	createUserRoute := routing.Post("/users", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "User created!")
-	})
-
-	// PUT route
-	updateUserRoute := routing.Put("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
-		id := r.Context().Value("id").(string)
-		fmt.Fprintf(w, "User ID %s updated!", id)
-	})
-
-	// DELETE route
-	deleteUserRoute := routing.Delete("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
-		id := r.Context().Value("id").(string)
-		fmt.Fprintf(w, "User ID %s deleted!", id)
-	})
-
-	// Root route
+	// Root route to render the HTML view
 	rootRoute := routing.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Welcome to Icepeak!")
+		renderTemplate(w, "welcome/index.html")
 	})
 
-	// Register the routes with the router
-	router.AddRoute(helloRoute)
-	router.AddRoute(createUserRoute)
-	router.AddRoute(updateUserRoute)
-	router.AddRoute(deleteUserRoute)
+	// Register routes
 	router.AddRoute(rootRoute)
 
 	// Register custom error handlers
 	router.RegisterErrorHandler(404, func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "Custom 404: Page not found!", http.StatusNotFound)
+		renderTemplate(w, "errors/404.html")
 	})
+
+	router.RegisterErrorHandler(500, func(w http.ResponseWriter, r *http.Request) {
+		env := os.Getenv("ENVIRONMENT")
+		if env == "development" {
+			// Detailed error messages for development
+			stackTrace := make([]byte, 1024)
+			runtime.Stack(stackTrace, false)
+			renderTemplate(w, "errors/debug.html", string(stackTrace))
+		} else {
+			// Generic error message for production
+			renderTemplate(w, "errors/500.html")
+		}
+	})
+
+	router.RegisterErrorHandler(403, func(w http.ResponseWriter, r *http.Request) {
+		renderTemplate(w, "errors/403.html")
+	})
+
+	// Fallback route for unmatched paths
+	fallbackRoute := routing.Get("/*", func(w http.ResponseWriter, r *http.Request) {
+		renderTemplate(w, "errors/404.html")
+	})
+	router.AddRoute(fallbackRoute)
+
+	// Under construction route example
+	underConstructionRoute := routing.Get("/under-construction", func(w http.ResponseWriter, r *http.Request) {
+		renderTemplate(w, "errors/under_construction.html")
+	})
+	router.AddRoute(underConstructionRoute)
 
 	// Start the server
 	fmt.Println("Server running at http://localhost:8080")
 	http.ListenAndServe(":8080", router)
 }
 
-// loggingMiddleware is a sample middleware for logging requests.
-func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("Request: %s %s\n", r.Method, r.URL.Path)
-		next.ServeHTTP(w, r)
-	})
+// loadConfig reads the configuration from the YAML file
+func loadConfig() error {
+	data, err := ioutil.ReadFile("config/view.yaml")
+	if err != nil {
+		return err
+	}
+	return yaml.Unmarshal(data, &config)
+}
+
+// renderTemplate loads and renders an HTML template
+func renderTemplate(w http.ResponseWriter, templateName string, data ...interface{}) {
+	tmpl, err := template.ParseFiles(filepath.Join(config.ViewRoot, templateName))
+	if err != nil {
+		http.Error(w, "Error loading template", http.StatusInternalServerError)
+		return
+	}
+	if len(data) > 0 {
+		tmpl.Execute(w, data[0])
+	} else {
+		tmpl.Execute(w, nil)
+	}
 }

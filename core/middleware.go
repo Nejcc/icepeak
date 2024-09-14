@@ -71,8 +71,23 @@ func InputValidationMiddleware(requiredFields []string) func(http.Handler) http.
 // RequestLoggingMiddleware logs details about the incoming request.
 func RequestLoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		logger := GetKernel().Services.Get("logger").(*DefaultLogger)
-		logger.Info(fmt.Sprintf("[REQUEST] %s %s", r.Method, r.URL.Path))
+		// Corrected method call to Resolve the logger service
+		logger, err := GetKernel().Services.Resolve("logger")
+		if err != nil {
+			fmt.Printf("Error resolving logger service: %v\n", err)
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Cast the resolved service to *DefaultLogger and use it
+		defaultLogger, ok := logger.(*DefaultLogger)
+		if !ok {
+			fmt.Printf("Error casting logger service to *DefaultLogger\n")
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		defaultLogger.Info(fmt.Sprintf("[REQUEST] %s %s", r.Method, r.URL.Path))
 		next.ServeHTTP(w, r)
 	})
 }

@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"icepeak/core/routing"
-	"icepeak/routes"
 
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v2"
@@ -14,10 +13,10 @@ import (
 
 // Kernel is the core of the Icepeak framework
 type Kernel struct {
-	Router           *routing.Router
-	Middleware       []func(http.Handler) http.Handler
-	Config           map[string]interface{}
-	ServiceContainer map[string]interface{}
+	Router     *routing.Router
+	Middleware []func(http.Handler) http.Handler
+	Config     map[string]interface{}
+	Services   *ServiceContainer
 }
 
 var kernelInstance *Kernel
@@ -26,14 +25,14 @@ var kernelInstance *Kernel
 func NewKernel() *Kernel {
 	if kernelInstance == nil {
 		kernelInstance = &Kernel{
-			Router:           routing.NewRouter(),
-			Middleware:       []func(http.Handler) http.Handler{},
-			Config:           make(map[string]interface{}),
-			ServiceContainer: make(map[string]interface{}),
+			Router:     routing.NewRouter(),
+			Middleware: []func(http.Handler) http.Handler{},
+			Config:     make(map[string]interface{}),
+			Services:   NewServiceContainer(),
 		}
 		kernelInstance.loadEnvironment()
 		kernelInstance.loadConfiguration()
-		kernelInstance.loadRoutes()
+		kernelInstance.registerDefaultServices()
 	}
 	return kernelInstance
 }
@@ -64,24 +63,16 @@ func (k *Kernel) loadConfiguration() {
 	}
 }
 
-// loadRoutes loads routes from the routes files
-func (k *Kernel) loadRoutes() {
-	// Load web routes with dependencies
-	viewRoot := k.Config["VIEW_ROOT"].(string)
-	routes.RegisterWebRoutes(k.Router, viewRoot)
-
-	// Load API routes
-	routes.RegisterAPIRoutes(k.Router)
-}
-
 // RegisterMiddleware registers middleware to be applied to all routes
 func (k *Kernel) RegisterMiddleware(middleware func(http.Handler) http.Handler) {
 	k.Middleware = append(k.Middleware, middleware)
 }
 
-// RegisterService registers a service in the service container
-func (k *Kernel) RegisterService(name string, service interface{}) {
-	k.ServiceContainer[name] = service
+// registerDefaultServices registers default services in the service container
+func (k *Kernel) registerDefaultServices() {
+	k.Services.Register("logger", func() interface{} {
+		return &DefaultLogger{}
+	}, true) // Registering logger as a singleton
 }
 
 // HandleRequest manages the request lifecycle

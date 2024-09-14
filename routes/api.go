@@ -7,8 +7,8 @@ import (
 
 // RegisterAPIRoutes registers API routes
 func RegisterAPIRoutes(router *routing.Router) {
-	// API routes
-	router.AddRoute(routing.Get("/api/users", controllers.UserController))
+	// Example of registering a GET route using the router instance
+	router.Get("/api/users", controllers.UserController)
 
-	// More API routes can be added here...
+	// Add more API routes here as needed...
 }

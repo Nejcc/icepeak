@@ -92,5 +92,8 @@ func (k *Kernel) HandleRequest(w http.ResponseWriter, req *http.Request) {
 // StartServer starts the HTTP server
 func (k *Kernel) StartServer(address string) {
 	fmt.Printf("Server running at %s\n", address)
-	http.ListenAndServe(address, http.HandlerFunc(k.HandleRequest))
+	err := http.ListenAndServe(address, http.HandlerFunc(k.HandleRequest))
+	if err != nil {
+		fmt.Printf("Error starting server: %v\n", err)
+	}
 }

@@ -1,6 +1,7 @@
 package routing
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -69,6 +70,8 @@ func (r *Router) Delete(path string, handler http.HandlerFunc, middleware ...fun
 
 // ServeHTTP implements the http.Handler interface.
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	errorHandler := NewErrorHandler() // Initialize the centralized error handler
+
 	for _, route := range r.routes {
 		if route.Method == req.Method && route.Pattern.MatchString(req.URL.Path) {
 			// Extract parameters from the URL path
@@ -91,7 +94,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 						if route.ErrorHandler != nil {
 							route.ErrorHandler(w, req)
 						} else {
-							r.handleError(w, req, http.StatusInternalServerError)
+							errorHandler.HandleError(w, req, http.StatusInternalServerError, fmt.Errorf("%v", err))
 						}
 					}
 				}()
@@ -101,7 +104,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 	}
-	r.handleError(w, req, http.StatusNotFound)
+	errorHandler.HandleError(w, req, http.StatusNotFound, fmt.Errorf("Page not found"))
 }
 
 // handleError handles HTTP errors using custom or default error handlers.

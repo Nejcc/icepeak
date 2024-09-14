@@ -68,10 +68,10 @@ func (k *Kernel) RegisterMiddleware(middleware func(http.Handler) http.Handler) 
 	k.Middleware = append(k.Middleware, middleware)
 }
 
-// registerDefaultServices registers default services in the service container
+// RegisterDefaultServices registers default services in the service container.
 func (k *Kernel) registerDefaultServices() {
 	k.Services.Register("logger", func() interface{} {
-		return &DefaultLogger{}
+		return NewDefaultLogger("DEBUG", "file") // Log level and output can be configured
 	}, true) // Registering logger as a singleton
 }
 
